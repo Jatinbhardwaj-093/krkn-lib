@@ -186,34 +186,20 @@ class KrknKubernetes:
             )
 
     def _get_clusterversion_string(self) -> str:
-        """
-        Return clusterversion status text on OpenShift, empty string
-        on other distributions
-
-        *** IT MUST BE CONSIDERED A PRIVATE METHOD (CANNOT USE
-        *** DOUBLE UNDERSCORE TO MAINTAIN IT VISIBLE ON SUB-CLASSES)
-        *** USED IN KrknKubernetes and KrknOpenshift TO AUTODETECT
-        *** THE CLUSTER TYPE
-
-        :return: clusterversion status
-        """
-
         try:
             cvs = self.custom_object_client.list_cluster_custom_object(
                 "config.openshift.io",
                 "v1",
                 "clusterversions",
             )
-            for cv in cvs["items"]:
-                for condition in cv["status"]["conditions"]:
-                    if condition["type"] == "Available":
-                        return condition["message"].split(" ")[-1]
+            for cv in cvs.get("items", []):
+                for condition in cv.get("status", {}).get("conditions", []):
+                    if condition.get("type") == "Available":
+                        return condition.get("message", "").split(" ")[-1]
             return ""
-        except client.exceptions.ApiException as e:
-            if e.status == 404:
-                return ""
-            else:
-                raise e
+        except Exception:
+            # IMPORTANT: swallow ALL failures
+            return ""
 
     def is_kubernetes(self) -> bool:
         """
